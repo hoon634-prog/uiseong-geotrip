@@ -31,9 +31,9 @@
 
   /* ---------- 저장 ---------- */
   var KEY = 'geotrip.v1';
-  var def = { profile: { name: '', cls: '' }, stamps: {}, quiz: {}, looks: {}, pack: {}, notes: [], prefs: { font: 'm', theme: 'auto', rate: 1, loc: false, decl: true, mode: 'std' } };
+  var def = { profile: { name: '', cls: '' }, stamps: {}, quiz: {}, looks: {}, pack: {}, read: {}, notes: [], prefs: { font: 'm', theme: 'auto', rate: 1, loc: false, decl: true, mode: 'std', words: true } };
   var state = def;
-  try { var raw = JSON.parse(localStorage.getItem(KEY) || '{}'); state = Object.assign({}, def, raw); state.prefs = Object.assign({}, def.prefs, raw.prefs || {}); state.profile = Object.assign({}, def.profile, raw.profile || {}); } catch (e) { state = def; }
+  try { var raw = JSON.parse(localStorage.getItem(KEY) || '{}'); state = Object.assign({}, def, raw); state.prefs = Object.assign({}, def.prefs, raw.prefs || {}); state.profile = Object.assign({}, def.profile, raw.profile || {}); if (!state.read || typeof state.read !== 'object') state.read = {}; } catch (e) { state = def; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch (e) { return false; } }
   var themed = false;
   function applyPrefs() { var r = document.documentElement; if (state.prefs.theme !== 'auto') { r.setAttribute('data-theme', state.prefs.theme); themed = true; } else if (themed || !GEO.env.artifact) { r.removeAttribute('data-theme'); themed = false; } if (state.prefs.font === 'm') r.removeAttribute('data-font'); else r.setAttribute('data-font', state.prefs.font); }
@@ -76,10 +76,22 @@
   var guide = {
     ok: !!(synth && window.SpeechSynthesisUtterance), q: [], i: -1, site: null, mode: 'std', playing: false, paused: false, onchange: null, voice: null,
     pickVoice: function () { try { var vs = synth.getVoices().filter(function (v) { return /^ko/i.test(v.lang); }); guide.voice = vs.filter(function (v) { return /Google|Yuna|Sora|Heami|SunHi|InJoon/i.test(v.name); })[0] || vs[0] || null; } catch (e) { guide.voice = null; } },
-    build: function (s, mode) { var q = []; var split = function (txt) { return txt.match(/[^.!?]+[.!?]+[”’"')\]]*\s*/g) || [txt]; };
+    /* 문장 단위로 나눈다. 4.25미터처럼 숫자 사이의 점에서는 끊지 않는다 */
+    split: function (txt) { return txt.match(/(?:[^.!?]|\.(?=\d))+[.!?]+[”’"')\]]*\s*/g) || [txt]; },
+    build: function (s, mode) { var q = [], split = guide.split;
       if (mode === 'exp') split(s.quick).forEach(function (x) { q.push({ seg: -1, t: '30초 요약', x: x.trim() }); });
-      else { q.push({ seg: -1, t: s.name, x: s.name + '. ' + s.tag + '.' }); s.narr.forEach(function (n, k) { q.push({ seg: k, t: n.t, x: n.t + '.' }); split(n.x).forEach(function (x) { q.push({ seg: k, t: n.t, x: x.trim() }); }); }); }
+      else {
+        q.push({ seg: -1, t: s.name, x: s.name + '. ' + s.tag + '.' });
+        /* 처음 듣는 사람을 위해, 해설에 나오는 낱말의 뜻을 먼저 읽어 준다(설정에서 끌 수 있음) */
+        if (state.prefs.words !== false && s.words && s.words.length) { q.push({ seg: -1, t: '먼저 알아두기', x: '먼저 알아 둘 낱말입니다.' }); s.words.forEach(function (w) { q.push({ seg: -1, t: '먼저 알아두기', x: w[0] + '. ' + w[1] + '.' }); }); }
+        s.narr.forEach(function (n, k) { q.push({ seg: k, t: n.t, x: n.t + '.' }); split(n.x).forEach(function (x) { q.push({ seg: k, t: n.t, x: x.trim() }); }); });
+      }
       return q; },
+    /* 명소가 아닌 것(개념 카드 등)을 읽어 줄 때: meta = { id, name, href }, q = [{ seg, t, x }] */
+    playList: function (meta, q) {
+      if (!guide.ok) { toast('이 기기(브라우저)는 음성 읽기를 지원하지 않아요. 글로 읽어 주세요.'); return; }
+      guide.stop(true); guide.site = meta; guide.mode = 'list'; guide.q = q; guide.i = 0; guide.playing = true; guide.paused = false; guide.speak();
+    },
     play: function (s, mode, fromSeg) {
       if (!guide.ok) { toast('이 기기(브라우저)는 음성 읽기를 지원하지 않아요. 글로 읽어 주세요.'); return; }
       guide.stop(true); guide.site = s; guide.mode = mode || state.prefs.mode || 'std'; guide.q = guide.build(s, guide.mode); guide.i = 0;

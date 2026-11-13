@@ -1,9 +1,9 @@
 /* 의성 지오트립 — 오프라인 캐시. 파일을 고친 뒤에는 VER 숫자를 올리면 모든 기기가 새 파일을 받습니다. */
-var VER = 'geotrip-v1';
+var VER = 'geotrip-v2';
 var CORE = [
   './', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-180.png',
   'css/app.css',
-  'js/data-sites-1.js', 'js/data-sites-2.js', 'js/data-study.js', 'js/scenes.js', 'js/core.js',
+  'js/data-sites-1.js', 'js/data-sites-2.js', 'js/data-study.js', 'js/scenes.js', 'js/figs.js', 'js/core.js',
   'js/views-a.js', 'js/views-b.js', 'js/tools.js', 'js/ar.js'
 ];
 self.addEventListener('install', function (e) {

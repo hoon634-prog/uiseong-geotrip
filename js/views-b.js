@@ -7,39 +7,87 @@
   function li(href, icon, title, sub) { return '<a href="' + href + '"><span class="ic">' + ic(icon) + '</span><span class="tx">' + title + (sub ? '<small>' + sub + '</small>' : '') + '</span>' + arrow() + '</a>'; }
 
   /* ---------- 학습 ---------- */
+  var cfilter = 'all';
+  var CF = [['all', '전체'], ['is', '공통 과목'], ['es', '지구과학'], ['etc', '진로·융합']];
+  var CFS = { is: ['is1', 'is2', 'lab'], es: ['es'], etc: ['ess', 'cc'] };
+  function inFilter(c) { return cfilter === 'all' || c.cur.some(function (x) { return CFS[cfilter].indexOf(x.s) >= 0; }); }
+  function qSet(lv) { return GEO.quiz.filter(function (q) { return q.lv === lv; }); }
+  /* 과목 → 단원 → 개념 카드 표 */
+  function curMap() {
+    return Object.keys(GEO.subjects).map(function (k) {
+      var sb = GEO.subjects[k], units = {}, order = [];
+      GEO.concepts.forEach(function (c) { c.cur.forEach(function (x) { if (x.s !== k) return; if (!units[x.u]) { units[x.u] = []; order.push(x.u); } if (units[x.u].indexOf(c) < 0) units[x.u].push(c); }); });
+      if (!order.length) return '';
+      return '<div class="cur-item"><div class="row" style="gap:6px;flex-wrap:wrap"><b>' + esc(sb.name) + '</b><span class="chip">' + esc(sb.kind) + '</span></div>' + order.map(function (u) { return '<p class="small"><span class="muted">' + esc(u) + '</span><br>' + units[u].map(function (c) { return '<a href="#concept-' + c.id + '">' + esc(c.t) + '</a>'; }).join(' · ') + '</p>'; }).join('') + '</div>';
+    }).join('');
+  }
   V.views.study = function () {
-    var total = GEO.quiz.length + GEO.sites.reduce(function (a, s) { return a + s.quiz.length; }, 0), ok = Object.keys(S.quiz).filter(function (k) { return S.quiz[k] === true; }).length;
+    var base = ui.baseList(), bn = base.filter(function (c) { return S.read[c.id]; }).length, nextB = base.filter(function (c) { return !S.read[c.id]; })[0] || base[0];
+    var total = GEO.quiz.length + GEO.sites.reduce(function (a, s) { return a + s.quiz.length; }, 0);
+    var ok = GEO.quiz.filter(function (q) { return S.quiz[q.id] === true; }).length + GEO.sites.reduce(function (a, s) { return a + s.quiz.filter(function (q, i) { return S.quiz[s.id + '-' + i] === true; }).length; }, 0);
     return { title: '학습', html:
-      '<div class="list">' + li('#quiz', 'quiz', '퀴즈', '수능형 14문제 + 명소별 3문제 · 맞힌 문제 ' + ok + ' / ' + total) + li('#glossary', 'az', '용어 사전', GEO.glossary.length + '개 용어') + li('#timeline', 'time', '의성 지질 연대표', '선캄브리아 시대부터 국가지질공원까지') + li('#tools', 'tools', '탐구 도구', '클리노미터 · 공룡 속도 계산기 · 조사 노트') + li('#helper', 'search', '묻고 답하기', '궁금한 것을 검색해 보세요') + '</div>' +
-      ui.sec('교과 개념 카드', '<p class="small muted">교과 표시는 2015 개정 과목명 기준입니다. 2022 개정 교육과정에서는 주로 「지구과학」과 「지구시스템과학」에서 다룹니다.</p><div class="stack">' + GEO.concepts.map(function (c) { return '<a class="concept-link" href="#concept-' + c.id + '"><span>' + esc(c.t) + '<small>' + esc(c.sum) + '</small></span><span class="chip">' + esc(c.cur) + '</span></a>'; }).join('') + '</div>') +
+      '<div class="card"><span class="eyebrow">처음이라면 여기부터</span><div class="row"><h2 class="h2 grow">기초 ' + base.length + '단계</h2><span class="mono">' + bn + ' / ' + base.length + '</span></div><div class="progress"><i style="width:' + (bn / base.length * 100) + '%"></i></div><p class="small muted">지구과학을 배운 적이 없어도 괜찮아요. 순서대로 읽거나 들으면 명소 12곳의 해설을 모두 알아들을 수 있습니다.</p>' +
+        '<div class="steps">' + base.map(function (c) { var rd = !!S.read[c.id]; return '<a class="look step" href="#concept-' + c.id + '"><span class="n' + (rd ? ' done' : '') + '">' + (rd ? '✓' : c.n) + '</span><div><b>' + esc(c.t) + '</b><p class="small">' + esc(c.sum) + '</p></div></a>'; }).join('') + '</div>' +
+        '<div class="acts"><a class="btn primary" href="#concept-' + nextB.id + '">' + ic('book') + (bn === 0 ? '1단계부터 읽기' : bn >= base.length ? '처음부터 다시 읽기' : nextB.n + '단계 이어 읽기') + '</a><button class="btn" data-act="play-base">' + ic('sound') + '이어 듣기</button></div></div>' +
+      '<div class="list">' + li('#quiz', 'quiz', '퀴즈', '공통 과목 ' + qSet('is').length + ' · 지구과학 ' + qSet('es').length + ' · 명소별 3문제 · 맞힌 문제 ' + ok + ' / ' + total) + li('#glossary', 'az', '용어 사전', GEO.glossary.length + '개 낱말을 쉬운 말로') + li('#timeline', 'time', '의성 지질 연대표', '선캄브리아 시대부터 국가지질공원까지') + li('#tools', 'tools', '탐구 도구', '클리노미터 · 공룡 속도 계산기 · 조사 노트') + li('#helper', 'search', '묻고 답하기', '궁금한 것을 검색해 보세요') + '</div>' +
+      ui.sec('개념 카드 ' + GEO.concepts.length + '장', '<p class="small muted">과목과 단원 이름은 2022 개정 교육과정(2025학년도 고1부터 적용)을 따랐습니다. 모든 카드는 쉬운 설명부터 시작해요.</p><div class="seg" role="group" aria-label="과목으로 고르기">' + CF.map(function (f) { return '<button data-act="cfilter" data-f="' + f[0] + '" aria-pressed="' + (cfilter === f[0]) + '">' + f[1] + '</button>'; }).join('') + '</div><div class="stack">' + GEO.concepts.filter(inFilter).map(ui.conceptLink).join('') + '</div>') +
+      '<details class="card"><summary>2022 개정 교육과정 과목별로 보기</summary>' + curMap() + '<p class="small muted">교육부 고시 제2022-33호 [별책 9] 과학과 교육과정의 과목·단원 이름입니다.</p></details>' +
       ui.sec('지층의 순서', ui.strat()) };
   };
+  V.acts.cfilter = function (t) { cfilter = t.dataset.f; V.render(true); };
   V.views.concept = function (id) {
     var c = concept(id); if (!c) return V.views.study();
-    return { title: '개념 카드', back: true, html:
-      '<section class="sec"><span class="chip" style="align-self:flex-start">' + esc(c.cur) + '</span><h2 class="h-display" style="font-size:1.6rem">' + esc(c.t) + '</h2><p style="font-weight:600">' + esc(c.sum) + '</p></section>' +
-      '<div class="card prose">' + c.body.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>' +
-      '<div class="banner">' + ic('bulb') + '<span><b>시험 포인트</b><br>' + esc(c.tip) + '</span></div>' +
-      ui.sec('의성에서 확인하기', '<div class="stack">' + c.where.map(function (sid) { return ui.siteRow(A.site(sid)); }).join('') + '</div>') };
+    var base = ui.baseList(), bi = base.indexOf(c), prev = bi > 0 ? base[bi - 1] : null, next = bi >= 0 && bi < base.length - 1 ? base[bi + 1] : null;
+    var fig = c.fig && GEO.fig ? GEO.fig(c.fig) : '';
+    var para = function (p) { return '<p>' + esc(p) + '</p>'; };
+    return { title: bi >= 0 ? '기초 ' + c.n + ' / ' + base.length : '개념 카드', back: true, html:
+      '<section class="sec"><div class="chips"><span class="chip ok">' + (bi >= 0 ? '기초 ' + c.n + '단계' : '더 알아보기') + '</span>' + ui.subjects(c).map(function (x) { return '<span class="chip">' + esc(x) + '</span>'; }).join('') + '</div><h2 class="h-display" style="font-size:1.6rem">' + esc(c.t) + '</h2><p style="font-weight:600">' + esc(c.sum) + '</p><button class="btn" data-act="play-concept" data-id="' + c.id + '" style="align-self:flex-start">' + ic('sound') + '설명 듣기</button></section>' +
+      fig +
+      '<div class="card prose"><span class="eyebrow">처음 만나는 사람을 위한 설명</span>' + c.easy.map(para).join('') + '</div>' +
+      '<div class="card"><b>꼭 알아둘 낱말</b>' + ui.words(c.words) + '</div>' +
+      '<div class="banner">' + ic('bulb') + '<span><b>한 줄 정리</b><br>' + esc(c.tip) + '</span></div>' +
+      (c.deep && c.deep.length ? '<details class="card"><summary>한 걸음 더</summary><div class="prose small">' + c.deep.map(para).join('') + '</div></details>' : '') +
+      ui.sec('2022 개정 교육과정에서는', '<div class="card">' + c.cur.map(function (x) { var sb = GEO.subjects[x.s]; return '<div class="cur-item"><div class="row" style="gap:6px;flex-wrap:wrap"><span class="chip ok">' + esc(sb.name) + '</span><span class="small muted">' + esc(sb.kind) + '</span></div><b>' + esc(x.u) + (x.c ? ' <span class="mono small muted">[' + esc(x.c) + ']</span>' : '') + '</b><p class="small">' + esc(x.x) + '</p></div>'; }).join('') + '</div>') +
+      ui.sec('의성에서 확인하기', '<div class="stack">' + c.where.map(function (sid) { return ui.siteRow(A.site(sid)); }).join('') + '</div>') +
+      (bi >= 0 ? '<div class="acts">' + (prev ? '<a class="btn" href="#concept-' + prev.id + '">이전 단계</a>' : '<a class="btn" href="#study">학습 목록</a>') + (next ? '<a class="btn primary" href="#concept-' + next.id + '">다음: ' + esc(next.t) + '</a>' : '<a class="btn primary" href="#quiz-is">기초 끝! 퀴즈 풀기</a>') + '</div>' : ''),
+      init: function () { if (!S.read[c.id]) { S.read[c.id] = Date.now(); A.save(); } } };
   };
+  /* 개념 카드 읽어 주기 */
+  function speakable(x) { return x.replace(/\s*[=+]\s*/g, ', ').replace(/→/g, ', '); }
+  function conceptQ(c, seg) {
+    var q = [{ seg: seg, t: c.t, x: (c.lv === 'base' ? '기초 ' + c.n + '단계. ' : '') + c.t + '.' }];
+    c.easy.forEach(function (p) { guide.split(p).forEach(function (x) { q.push({ seg: seg, t: c.t, x: speakable(x.trim()) }); }); });
+    q.push({ seg: seg, t: c.t, x: '한 줄 정리. ' + speakable(c.tip) });
+    return q;
+  }
+  V.acts['play-concept'] = function (t) { var c = concept(t.dataset.id); if (!c) return; guide.playList({ id: 'concept-' + c.id, name: c.lv === 'base' ? '기초 ' + c.n + '단계' : '개념 카드', href: '#concept-' + c.id }, conceptQ(c, 0)); };
+  V.acts['play-base'] = function () { var q = [], base = ui.baseList(); base.forEach(function (c, i) { q = q.concat(conceptQ(c, i)); }); guide.playList({ id: 'base', name: '기초 ' + base.length + '단계 이어 듣기', href: '#study' }, q); };
 
   /* ---------- 퀴즈 ---------- */
   var QZ = { key: null, list: [], i: 0, pick: null, right: 0 };
+  var QSETS = [
+    { k: 'is', t: '공통 과목 범위', s: '통합과학1 · 통합과학2 · 과학탐구실험1', d: '고1이 배우는 범위입니다. 기초 단계를 읽었다면 풀 수 있어요.' },
+    { k: 'es', t: '지구과학 범위', s: '일반 선택 「지구과학」 · 지구의 역사와 한반도의 암석', d: '지층, 화석, 화산, 지질공원. 보기(ㄱ, ㄴ, ㄷ)형이 섞여 있어요.' },
+    { k: 'plus', t: '심화', s: '2022 개정 교육과정 밖', d: '지질 조사에서 쓰는 주향·경사 표기와 나침반 보정. 궁금한 사람만!' }
+  ];
+  function qsetOf(key) { return QSETS.filter(function (x) { return x.k === key; })[0]; }
   function quizList(key) {
     if (key === 'all') return GEO.quiz.map(function (q) { return { id: q.id, q: q }; });
+    if (qsetOf(key)) return qSet(key).map(function (q) { return { id: q.id, q: q }; });
     if (key === 'wrong') { var w = []; GEO.quiz.forEach(function (q) { if (S.quiz[q.id] === false) w.push({ id: q.id, q: q }); }); GEO.sites.forEach(function (s) { s.quiz.forEach(function (q, i) { if (S.quiz[s.id + '-' + i] === false) w.push({ id: s.id + '-' + i, q: q, site: s }); }); }); return w; }
     var s = A.site(key); return s ? s.quiz.map(function (q, i) { return { id: s.id + '-' + i, q: q, site: s }; }) : [];
   }
   V.views.quiz = function (key) {
     if (!key) {
-      var wrong = Object.keys(S.quiz).filter(function (k) { return S.quiz[k] === false; }).length, gOk = GEO.quiz.filter(function (q) { return S.quiz[q.id] === true; }).length;
+      var wrong = quizList('wrong').length;
       return { title: '퀴즈', back: true, html:
-        '<a class="card" href="#quiz-all" style="text-decoration:none;color:inherit"><span class="eyebrow">수능형 도전</span><h2 class="h2">의성에서 푸는 지구과학 ' + GEO.quiz.length + '문제</h2><div class="progress"><i style="width:' + (gOk / GEO.quiz.length * 100) + '%"></i></div><p class="small muted">맞힌 문제 ' + gOk + ' / ' + GEO.quiz.length + ' · 보기(ㄱ, ㄴ, ㄷ)형 포함</p></a>' +
+        '<p class="small muted">2022 개정 교육과정의 과목 범위에 맞춰 묶었습니다. 답을 고르면 바로 쉬운 풀이가 나와요.</p>' +
+        QSETS.map(function (x) { var qs = qSet(x.k), okn = qs.filter(function (q) { return S.quiz[q.id] === true; }).length; return '<a class="card" href="#quiz-' + x.k + '" style="text-decoration:none;color:inherit"><span class="eyebrow">' + esc(x.s) + '</span><div class="row"><h2 class="h2 grow">' + esc(x.t) + ' ' + qs.length + '문제</h2><span class="mono">' + okn + ' / ' + qs.length + '</span></div><div class="progress"><i style="width:' + (qs.length ? okn / qs.length * 100 : 0) + '%"></i></div><p class="small muted">' + esc(x.d) + '</p></a>'; }).join('') +
         (wrong ? '<a class="btn hot block" href="#quiz-wrong">틀린 문제 ' + wrong + '개 다시 풀기</a>' : '') +
         ui.sec('명소별 확인 퀴즈', '<div class="list">' + GEO.sites.map(function (s) { var n = s.quiz.filter(function (q, i) { return S.quiz[s.id + '-' + i] === true; }).length; return '<a href="#quiz-' + s.id + '"><span class="ic">' + ic(n === s.quiz.length ? 'check' : 'quiz') + '</span><span class="tx">' + s.no + '. ' + esc(s.name) + '<small>맞힌 문제 ' + n + ' / ' + s.quiz.length + '</small></span>' + arrow() + '</a>'; }).join('') + '</div>') };
     }
     if (QZ.key !== key) { QZ = { key: key, list: quizList(key), i: 0, pick: null, right: 0 }; }
-    var title = key === 'all' ? '수능형 도전' : key === 'wrong' ? '틀린 문제 다시 풀기' : (A.site(key) ? A.site(key).name + ' 퀴즈' : '퀴즈');
+    var title = key === 'all' ? '교과 퀴즈 전체' : qsetOf(key) ? qsetOf(key).t + ' 퀴즈' : key === 'wrong' ? '틀린 문제 다시 풀기' : (A.site(key) ? A.site(key).name + ' 퀴즈' : '퀴즈');
     if (!QZ.list.length) return { title: title, back: true, html: '<div class="card"><p>풀 문제가 없습니다.</p><a class="btn primary" href="#quiz">퀴즈 목록으로</a></div>' };
     if (QZ.i >= QZ.list.length) {
       var s = A.site(key), perfect = QZ.right === QZ.list.length, got = false;
@@ -58,7 +106,7 @@
   V.acts['quiz-restart'] = function () { var k = QZ.key; QZ = { key: null }; V.render(); };
 
   /* ---------- 용어 · 연대표 · 이야기 ---------- */
-  V.views.glossary = function () { return { title: '용어 사전', back: true, html: '<label class="field">용어 찾기<input type="search" id="gloss-q" data-input="gloss" placeholder="예: 건열, 주향, 응회암" autocomplete="off"></label><div class="card" id="gloss-list">' + glossRows('') + '</div>' }; };
+  V.views.glossary = function () { return { title: '용어 사전', back: true, html: '<label class="field">용어 찾기<input type="search" id="gloss-q" data-input="gloss" placeholder="예: 지층, 건열, 응회암" autocomplete="off"></label><div class="card" id="gloss-list">' + glossRows('') + '</div>' }; };
   function glossRows(q) { var list = GEO.glossary.filter(function (g) { return !q || g.w.indexOf(q) >= 0 || g.d.indexOf(q) >= 0; }).sort(function (a, b) { return a.w.localeCompare(b.w, 'ko'); }); return list.length ? list.map(function (g) { return '<div style="padding:8px 0;border-top:1px solid var(--line)"><b>' + esc(g.w) + '</b><p class="small">' + esc(g.d) + '</p></div>'; }).join('') : '<p class="muted">찾는 용어가 없어요. 다른 낱말로 검색해 보세요.</p>'; }
   V.inputs = { gloss: function (t) { $('#gloss-list').innerHTML = glossRows(t.value.trim()); }, helper: function (t) { var o = $('#helper-out'); o.innerHTML = helperOut(t.value.trim()); paint(o); } };
   V.views.timeline = function () { return { title: '의성 지질 연대표', back: true, html: '<p class="muted">아래로 내려갈수록 현재에 가까워집니다. 초록 점은 퇴적, 분홍 점은 화산 활동, 회색 점은 그 밖의 사건이에요.</p><div class="tl">' + GEO.timeline.map(function (e) { return '<div class="e ' + (e.c || '') + '"><span class="when">' + esc(e.when) + '</span><h3 class="h3">' + esc(e.t) + '</h3>' + (e.x ? '<p class="small">' + esc(e.x) + '</p>' : '') + (e.sites ? '<div class="chips" style="margin-top:6px">' + e.sites.map(function (id) { var s = A.site(id); return '<a class="chip ' + s.cat + '" href="#site-' + id + '" style="text-decoration:none">' + s.no + '. ' + esc(s.name) + '</a>'; }).join('') + '</div>' : '') + '</div>'; }).join('') + '</div>' }; };
@@ -70,7 +118,9 @@
     { t: '퇴적 탐정', d: '쌍호리 · 해망산 · 누룩바위 · 점곡', ic: 'layers', ok: function () { return S.stamps.ssangho && S.stamps.haemang && S.stamps.nuruk && S.stamps.jeomgok; } },
     { t: '화산 탐험가', d: '구산동응회암 + 금성산 + 빙계계곡', ic: 'star', ok: function () { return S.stamps.gusandong && S.stamps.geumseong && S.stamps.binggye; } },
     { t: '지형 읽는 눈', d: '안계분지 + 베틀바위', ic: 'compass', ok: function () { return S.stamps.angye && S.stamps.beteul; } },
-    { t: '수능형 만점', d: '수능형 도전 14문제 모두 정답', ic: 'quiz', ok: function () { return GEO.quiz.every(function (q) { return S.quiz[q.id] === true; }); } },
+    { t: '기초 다지기', d: '학습 탭의 기초 단계를 모두 읽기', ic: 'book', ok: function () { return ui.baseList().every(function (c) { return S.read[c.id]; }); } },
+    { t: '공통 과목 통과', d: '공통 과목(통합과학) 범위 퀴즈 모두 정답', ic: 'quiz', ok: function () { return qSet('is').every(function (q) { return S.quiz[q.id] === true; }); } },
+    { t: '지구과학 통과', d: '지구과학 범위 퀴즈 모두 정답', ic: 'quiz', ok: function () { return qSet('es').every(function (q) { return S.quiz[q.id] === true; }); } },
     { t: '의성 완주', d: '스탬프 12개', ic: 'pass', ok: function () { return A.stampCount() >= 12; } }
   ];
   V.views.pass = function () {
@@ -108,7 +158,7 @@
   V.acts['course-map'] = function (t) { V.setMapCourse(t.dataset.id); location.hash = '#map'; };
 
   /* ---------- 도구 목록 ---------- */
-  V.views.tools = function () { return { title: '탐구 도구', back: true, html: '<div class="list">' + li('#clino', 'angle', '클리노미터', '스마트폰으로 지층의 주향과 경사 재기') + li('#speed', 'speed', '공룡 속도 계산기', '발 길이와 보폭으로 골반 높이와 속도 구하기') + li('#notes', 'note', '조사 노트', '사진 · 측정값 · 관찰 기록 ' + S.notes.length + '개') + li('#ar', 'lens', 'AR 렌즈', '노두에 설명과 과거 환경 겹쳐 보기') + '</div><div class="card flat"><b>측정은 과학의 언어</b><p class="small">“많이 기울었다”보다 “남동쪽으로 40° 기울었다”가 훨씬 많은 것을 알려 줍니다. 재고, 적고, 비교해 보세요.</p></div>' }; };
+  V.views.tools = function () { return { title: '탐구 도구', back: true, html: '<div class="list">' + li('#clino', 'angle', '클리노미터', '스마트폰으로 지층이 기운 각도와 방향 재기') + li('#speed', 'speed', '공룡 속도 계산기', '발 길이와 걸음 간격으로 골반 높이와 빠르기 구하기') + li('#notes', 'note', '조사 노트', '사진 · 측정값 · 관찰 기록 ' + S.notes.length + '개') + li('#ar', 'lens', 'AR 렌즈', '노두에 설명과 과거 환경 겹쳐 보기') + '</div><div class="card flat"><b>측정은 과학의 언어</b><p class="small">“많이 기울었다”보다 “남동쪽으로 40° 기울었다”가 훨씬 많은 것을 알려 줍니다. 재고, 적고, 비교해 보세요.</p></div>' }; };
 
   /* ---------- 묻고 답하기 ---------- */
   function helperOut(q) {
@@ -117,7 +167,7 @@
     var score = function (txt) { var n = 0; toks.forEach(function (t) { if (txt.indexOf(t) >= 0) n += t.length > 1 ? 2 : 1; }); return n; };
     GEO.faq.forEach(function (f) { var sc = score(f.q + ' ' + f.k) * 2 + score(f.a); if (sc) res.push({ sc: sc + 1, h: '<details class="card" open><summary>' + esc(f.q) + '</summary><p>' + esc(f.a) + '</p></details>' }); });
     GEO.glossary.forEach(function (g) { var sc = score(g.w) * 3 + score(g.d); if (sc) res.push({ sc: sc, h: '<div class="card"><span class="eyebrow">용어</span><b>' + esc(g.w) + '</b><p class="small">' + esc(g.d) + '</p></div>' }); });
-    GEO.concepts.forEach(function (c) { var sc = score(c.t) * 3 + score(c.sum); if (sc) res.push({ sc: sc, h: '<a class="concept-link" href="#concept-' + c.id + '"><span>' + esc(c.t) + '<small>' + esc(c.sum) + '</small></span><span class="chip">개념</span></a>' }); });
+    GEO.concepts.forEach(function (c) { var sc = score(c.t) * 3 + score(c.sum) + score(c.words.map(function (w) { return w[0]; }).join(' ')); if (sc) res.push({ sc: sc, h: '<a class="concept-link" href="#concept-' + c.id + '"><span>' + esc(c.t) + '<small>' + esc(c.sum) + '</small></span><span class="chip">개념</span></a>' }); });
     GEO.sites.forEach(function (s) { var sc = score(s.name + ' ' + s.keywords.join(' ')) * 3 + score(s.quick + ' ' + s.tag); if (sc) res.push({ sc: sc, h: ui.siteRow(s) }); });
     res.sort(function (a, b) { return b.sc - a.sc; });
     return res.length ? '<div class="stack">' + res.slice(0, 10).map(function (r) { return r.h; }).join('') + '</div>' : '<div class="card"><p>앱에 담긴 자료에서는 찾지 못했어요. 낱말을 바꿔 보거나 선생님께 물어보세요.</p></div>';
@@ -129,14 +179,14 @@
     var P = S.prefs, seg = function (k, opts) { return '<div class="seg" role="group">' + opts.map(function (o) { return '<button data-act="pref" data-k="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (String(P[k]) === String(o[0])) + '">' + o[1] + '</button>'; }).join('') + '</div>'; };
     return { title: '설정', back: true, html:
       '<div class="card"><b>글자 크기</b>' + seg('font', [['m', '보통'], ['l', '크게'], ['xl', '아주 크게']]) + '<b>화면 밝기</b>' + seg('theme', [['auto', '기기 설정'], ['light', '밝게'], ['dark', '어둡게']]) + '<b>해설 읽는 속도</b>' + seg('rate', [[0.85, '천천히'], [1, '보통'], [1.2, '빠르게']]) + '</div>' +
-      '<div class="card"><b>위치 사용</b>' + seg('loc', [[true, '앱을 열면 켜기'], [false, '필요할 때만']]) + '<p class="small muted">위치는 가까운 명소 안내, 도착 스탬프, 지도 표시에만 쓰이며 기기 밖으로 나가지 않습니다.</p><b>나침반 편각 보정 (진북 기준)</b>' + seg('decl', [[true, '보정함 (서편각 8°)'], [false, '보정 안 함 (자북)']]) + '</div>' +
+      '<div class="card"><b>위치 사용</b>' + seg('loc', [[true, '앱을 열면 켜기'], [false, '필요할 때만']]) + '<p class="small muted">위치는 가까운 명소 안내, 도착 스탬프, 지도 표시에만 쓰이며 기기 밖으로 나가지 않습니다.</p><b>나침반 보정</b>' + seg('decl', [[true, '보정함 (진짜 북쪽 기준)'], [false, '보정 안 함']]) + '<p class="small muted">나침반은 진짜 북쪽에서 서쪽으로 약 8° 치우친 방향을 가리킵니다. 보정을 켜면 진짜 북쪽 기준으로 바꿔 보여 줘요.</p></div>' +
       '<div class="list">' + li('#about', 'info', '앱 소개와 자료 출처', '') + '</div>' +
       '<div class="card"><b>기록 지우기</b><p class="small muted">스탬프, 퀴즈 결과, 조사 노트, 내 정보를 이 기기에서 모두 지웁니다.</p><button class="btn" data-act="reset">' + ic('trash') + '모두 지우기</button></div>' };
   };
   V.acts.reset = function () { A.sheet('<h2 class="h2">정말 모두 지울까요?</h2><p>스탬프 ' + A.stampCount() + '개, 조사 노트 ' + S.notes.length + '개를 포함한 모든 기록이 사라지고 되돌릴 수 없습니다.</p><button class="btn hot block" data-act="reset-yes">네, 모두 지웁니다</button><button class="btn block" data-act="close-sheet">취소</button>'); };
   V.acts['reset-yes'] = function () { try { localStorage.removeItem(A.KEY); } catch (e) { } location.hash = '#home'; location.reload(); };
   V.views.about = function () { return { title: '앱 소개', back: true, html:
-    '<div class="card prose"><h2 class="h2">의성 지오트립</h2><p>고등학생이 의성 국가지질공원의 지질명소 12곳을 답사하면서 지구과학 교과 내용을 현장에서 확인하도록 돕는 학습용 앱입니다. 해설을 듣고, AR 렌즈로 노두를 비춰 보고, 주향과 경사를 재고, 퀴즈로 정리합니다.</p><p><b>이 앱은 의성군이나 의성 국가지질공원이 만든 공식 앱이 아닙니다.</b> 학교 수업을 위해 만든 비공식 학습 도구이며, 탐방 시설과 운영 정보는 바뀔 수 있으니 방문 전 의성군에 확인하세요.</p></div>' +
+    '<div class="card prose"><h2 class="h2">의성 지오트립</h2><p>고등학생이 의성 국가지질공원의 지질명소 12곳을 답사하면서 과학 교과 내용을 현장에서 확인하도록 돕는 학습용 앱입니다. 해설을 듣고, AR 렌즈로 노두를 비춰 보고, 지층의 기울기를 재고, 퀴즈로 정리합니다.</p><p>교과 연결은 <b>2022 개정 교육과정</b>을 따릅니다. 공통 과목인 통합과학1·2와 과학탐구실험1, 일반 선택 「지구과학」(특히 ‘지구의 역사와 한반도의 암석’ 단원과 지질공원 성취기준), 진로 선택 「지구시스템과학」과 이어지도록 구성했습니다.</p><p>지구과학을 아직 배우지 않은 학생도 함께할 수 있게, 모든 해설은 낱말 풀이부터 시작하고 학습 탭에 ‘기초 단계’를 두었습니다.</p><p><b>이 앱은 의성군이나 의성 국가지질공원이 만든 공식 앱이 아닙니다.</b> 학교 수업을 위해 만든 비공식 학습 도구이며, 탐방 시설과 운영 정보는 바뀔 수 있으니 방문 전 의성군에 확인하세요.</p></div>' +
     ui.sec('내용의 바탕이 된 자료', '<div class="card"><ul style="margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px" class="small">' + GEO.sources.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul><p class="small muted">해설 문장은 위 자료의 사실과 수치를 바탕으로 고등학생 눈높이에 맞게 새로 쓴 것입니다. 연구가 진행되면 해석이 달라질 수 있습니다.</p></div>') +
     ui.sec('그림과 사진', '<div class="card"><p class="small">명소 화면의 그림은 실제 사진이 아니라 특징을 강조해 그린 장면 일러스트입니다. 직접 찍은 사진을 <span class="mono">img/sites/명소ID.jpg</span> (예: <span class="mono">jeori.jpg</span>) 이름으로 넣으면 그림 대신 사진이 보입니다. 자세한 방법은 앱 폴더의 사용 설명서를 보세요.</p></div>') +
     ui.sec('기기에 저장되는 것', '<div class="card"><p class="small">이름, 스탬프, 퀴즈 결과, 조사 노트와 사진은 이 기기의 브라우저 저장소에만 보관됩니다. 서버로 보내지 않으며, 브라우저 데이터를 지우면 함께 사라집니다.</p></div>') }; };

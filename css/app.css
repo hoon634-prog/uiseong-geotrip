@@ -209,6 +209,26 @@ main { padding-block: 16px calc(var(--tab-h) + 40px + env(safe-area-inset-bottom
 .story .eyebrow { color: var(--hot); }
 .concept-link { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); text-decoration: none; color: var(--ink); font-weight: 600; }
 .concept-link small { display: block; font-weight: 400; color: var(--ink-2); }
+.concept-link > span:first-child { min-width: 0; }
+.concept-link small.cur { font-family: var(--f-mono); font-size: .72rem; color: var(--ink-3); margin-top: 3px; }
+.concept-link .chip { flex: none; }
+
+/* ---------- 낱말 풀이 · 기초 단계 · 개념 그림 · 교과 연결 ---------- */
+.wd { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.wd dt { font-weight: 700; color: var(--accent); line-height: 1.35; }
+.wd dd { margin: 1px 0 0; font-size: .92rem; color: var(--ink-2); line-height: 1.5; }
+.steps { display: flex; flex-direction: column; }
+a.step { text-decoration: none; color: inherit; }
+a.step p { color: var(--ink-2); }
+.fig { margin: 0; padding: 12px; gap: 8px; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 520px; margin: 0 auto; }
+.fig svg text { font-family: var(--f-body); }
+.fig figcaption { font-size: .86rem; color: var(--ink-2); line-height: 1.5; }
+.cur-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-top: 1px solid var(--line); }
+.cur-item:first-child { border-top: 0; padding-top: 0; }
+.cur-item:last-child { padding-bottom: 0; }
+.cur-item a { color: var(--accent); font-weight: 600; text-decoration: none; }
+details.card .cur-item:first-of-type { border-top: 0; }
 
 /* ---------- audio player ---------- */
 .player { position: fixed; left: 0; right: 0; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); z-index: 24; }

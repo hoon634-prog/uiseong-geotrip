@@ -10,7 +10,7 @@
     var d = Math.round(T.norm(dipDir)) % 360, s = (d + 270) % 180, dipR = Math.round(dip);
     var strike = s === 0 ? 'NS' : s === 90 ? 'EW' : (s < 90 ? 'N' + s + '°E' : 'N' + (180 - s) + '°W');
     var quad = d % 90 === 0 ? ['N', 'E', 'S', 'W'][d / 90] : ['NE', 'SE', 'SW', 'NW'][Math.floor(d / 90)];
-    if (dipR < 1) return { strike: '—', dip: '수평', full: '수평층 (경사 0°)', s: s, d: d };
+    if (dipR < 1) return { strike: '—', dip: '수평', full: '평평한 지층 (기울기 0°)', s: s, d: d };
     return { strike: strike, dip: dipR + '°' + quad, full: strike + ', ' + dipR + '°' + quad, s: s, d: d };
   };
   T.compassName = function (az) { return ['북', '북동', '동', '남동', '남', '남서', '서', '북서'][Math.round(T.norm(az) / 45) % 8]; };
@@ -32,7 +32,7 @@
     var sym = $('#clino-sym'), num = $('#clino-num');
     if (has && dir != null) { var n = T.notation(dir, dip); sym.setAttribute('transform', 'rotate(' + (n.d - 90) + ')'); sym.style.opacity = 1; var rr = 52; num.setAttribute('x', Math.sin(n.d * RAD) * rr); num.setAttribute('y', -Math.cos(n.d * RAD) * rr); num.textContent = Math.round(dip);
       set('cl-dip', Math.round(dip) + '°'); set('cl-dir', n.d + '° (' + T.compassName(n.d) + ')'); set('cl-str', n.strike); set('cl-full', n.full); }
-    else { sym.style.opacity = 0.25; num.setAttribute('x', 0); num.setAttribute('y', 0); num.textContent = Math.round(dip) + '°'; set('cl-dip', Math.round(dip) + '°'); set('cl-dir', '방위 센서 없음'); set('cl-str', '—'); set('cl-full', '경사 ' + Math.round(dip) + '° (방향 미확인)'); }
+    else { sym.style.opacity = 0.25; num.setAttribute('x', 0); num.setAttribute('y', 0); num.textContent = Math.round(dip) + '°'; set('cl-dip', Math.round(dip) + '°'); set('cl-dir', '방향 센서 없음'); set('cl-str', '—'); set('cl-full', '기울기 ' + Math.round(dip) + '° (방향 미확인)'); }
   }
   function onOri(e) {
     if (C.mode !== 'sensor' || !C.on) return; if (e.beta == null || e.gamma == null) return;
@@ -58,16 +58,17 @@
       '<div class="card"><b>재는 방법</b><ol class="small" style="margin:0;padding-left:1.2em"><li>스마트폰 <b>뒷면</b>을 지층면에 평평하게 댑니다(화면이 하늘 쪽). 지층을 만질 수 없으면 나란하게 들어 맞춥니다.</li><li>숫자가 안정되면 ‘고정’을 누르고 값을 읽습니다.</li><li>자석이 든 케이스·철제 구조물 근처에서는 방향이 틀릴 수 있어요.</li></ol></div>' + seg +
       (C.mode === 'sensor' && !C.on ? '<button class="btn primary block" data-act="clino-start">' + ic('compass') + '센서 켜기</button>' : '') +
       '<div class="gauge">' + clinoSvg() + '</div>' +
-      '<div class="read"><div><span>경사각</span><b id="cl-dip">—</b></div><div><span>경사 방향 (' + (S.prefs.decl ? '진북' : '자북') + ' 기준)</span><b id="cl-dir" style="font-size:1rem">—</b></div><div><span>주향</span><b id="cl-str">—</b></div><div><span>지질 기록 표기</span><b id="cl-full" style="font-size:1rem">—</b></div></div>' +
-      (C.mode === 'manual' ? '<div class="card"><label class="field">경사각 <span class="mono" id="mv-dip">' + C.man.dip + '°</span><input type="range" min="0" max="90" value="' + C.man.dip + '" id="man-dip" data-input="clino-man"></label><label class="field">경사 방향(지층이 기울어 내려가는 쪽의 방위) <span class="mono" id="mv-dir">' + C.man.dir + '°</span><input type="range" min="0" max="359" value="' + C.man.dir + '" id="man-dir" data-input="clino-man"></label><p class="small muted">제오리 화석지의 기록은 N65°E, 40°SE입니다. 슬라이더로 같은 값을 만들어 보세요.</p></div>' : '<div class="acts"><button class="btn" data-act="clino-hold"' + (C.on ? '' : ' disabled') + '>' + (C.hold ? '고정 풀기' : '고정') + '</button><button class="btn primary" data-act="clino-save">' + ic('note') + '노트에 저장</button></div>') +
+      '<div class="read"><div><span>기운 각도</span><b id="cl-dip">—</b></div><div><span>기울어 내려가는 방향 (' + (S.prefs.decl ? '진짜 북쪽' : '나침반 북쪽') + ' 기준)</span><b id="cl-dir" style="font-size:1rem">—</b></div><div><span>지층이 뻗은 방향 (주향)</span><b id="cl-str">—</b></div><div><span>지질학자의 표기 (심화)</span><b id="cl-full" style="font-size:1rem">—</b></div></div>' +
+      '<p class="small muted">먼저 ‘어느 쪽으로 몇 도 기울었나’만 읽으면 충분합니다. 아래 두 칸은 지질 조사에서 쓰는 표기예요.</p>' +
+      (C.mode === 'manual' ? '<div class="card"><label class="field">기운 각도 <span class="mono" id="mv-dip">' + C.man.dip + '°</span><input type="range" min="0" max="90" value="' + C.man.dip + '" id="man-dip" data-input="clino-man"></label><label class="field">기울어 내려가는 방향 (북쪽 0°, 동쪽 90°, 남쪽 180°, 서쪽 270°) <span class="mono" id="mv-dir">' + C.man.dir + '°</span><input type="range" min="0" max="359" value="' + C.man.dir + '" id="man-dir" data-input="clino-man"></label><p class="small muted">제오리 화석지의 지층은 남동쪽(약 155°)으로 40° 기울어 있습니다. 슬라이더로 같은 값을 만들어 보세요. 지질학자의 표기로는 N65°E, 40°SE입니다.</p></div>' : '<div class="acts"><button class="btn" data-act="clino-hold"' + (C.on ? '' : ' disabled') + '>' + (C.hold ? '고정 풀기' : '고정') + '</button><button class="btn primary" data-act="clino-save">' + ic('note') + '노트에 저장</button></div>') +
       (C.mode === 'manual' ? '<button class="btn primary block" data-act="clino-save">' + ic('note') + '노트에 저장</button>' : '') +
-      '<details class="card"><summary>주향·경사 한눈에 보기</summary><p class="small"><b>주향</b>은 지층면이 수평면과 만나는 선의 방향이고, <b>경사</b>는 지층면이 수평면에서 기운 각도와 방향입니다. 경사 방향은 언제나 주향과 직각이에요. 위 그림의 긴 선이 주향, 짧은 선이 경사 방향이며, 지질도에서도 같은 기호(⊥)를 씁니다.</p><p class="small">나침반은 자북을 가리킵니다. 우리나라에서는 자북이 진북보다 서쪽으로 약 8° 치우쳐 있어서(편각), 설정에서 보정을 켜면 진북 기준 값으로 바꿔 보여 줍니다.</p></details>',
+      '<details class="card"><summary>한 걸음 더: 주향과 경사</summary><p class="small muted">2022 개정 교육과정에는 나오지 않는 심화 내용입니다. 지질 조사가 궁금한 사람만 읽어 보세요.</p><p class="small"><b>주향</b>은 지층면이 수평면과 만나는 선의 방향이고, <b>경사</b>는 지층면이 수평면에서 기운 각도와 방향입니다. 기울어 내려가는 방향은 언제나 주향과 직각이에요. 위 그림의 긴 선이 주향, 짧은 선이 기울어 내려가는 방향이며, 지질도에서도 같은 기호(⊥)를 씁니다. ‘N65°E, 40°SE’는 주향이 북에서 동으로 65° 방향이고, 남동쪽으로 40° 기울었다는 뜻이에요.</p><p class="small">나침반이 가리키는 북쪽은 진짜 북쪽보다 서쪽으로 약 8° 치우쳐 있습니다. 설정에서 보정을 켜면 진짜 북쪽 기준 값으로 바꿔 보여 줍니다.</p></details>',
       init: function () { clinoShow(); } };
   };
   V.acts['clino-mode'] = function (t) { C.mode = t.dataset.m; if (C.mode === 'manual') clinoStop(); V.render(true); };
   V.acts['clino-start'] = clinoStart;
   V.acts['clino-hold'] = function () { C.hold = !C.hold; V.render(true); };
-  V.acts['clino-save'] = function () { var dip = C.mode === 'manual' ? C.man.dip : C.dip, dir = C.mode === 'manual' ? C.man.dir : C.dir; if (dip == null) { A.toast('먼저 측정해 주세요.'); return; } var txt = dir != null ? '주향·경사: ' + T.notation(dir, dip).full + ' (경사 방향 ' + Math.round(T.norm(dir)) + '°, ' + (S.prefs.decl ? '진북' : '자북') + ' 기준)' : '경사각: ' + Math.round(dip) + '° (방향 미확인)'; T.editNote({ text: txt + (C.mode === 'manual' ? ' — 직접 입력값' : '') + '\n어디를 쟀나요? ' }); };
+  V.acts['clino-save'] = function () { var dip = C.mode === 'manual' ? C.man.dip : C.dip, dir = C.mode === 'manual' ? C.man.dir : C.dir; if (dip == null) { A.toast('먼저 측정해 주세요.'); return; } var txt = dir != null ? '지층의 기울기: ' + T.compassName(dir) + '쪽(' + Math.round(T.norm(dir)) + '°)으로 ' + Math.round(dip) + '° 기울어짐 · 지질학자의 표기 ' + T.notation(dir, dip).full + ' (' + (S.prefs.decl ? '진짜 북쪽' : '나침반 북쪽') + ' 기준)' : '지층의 기울기: ' + Math.round(dip) + '° (방향 미확인)'; T.editNote({ text: txt + (C.mode === 'manual' ? ' — 직접 입력값' : '') + '\n어디를 쟀나요? ' }); };
   V.inputs['clino-man'] = function () { C.man.dip = +$('#man-dip').value; C.man.dir = +$('#man-dir').value; $('#mv-dip').textContent = C.man.dip + '°'; $('#mv-dir').textContent = C.man.dir + '°'; clinoShow(); };
 
   /* ---------- 공룡 속도 계산기 ---------- */
